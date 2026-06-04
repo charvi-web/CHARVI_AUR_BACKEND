@@ -4,7 +4,7 @@ import {DB_NAME} from "./constants.js"
 import connectDB from "./db/index.js"
 import {app} from "./app.js"
 dotenv.config({
-    path:'./env'
+    path:'./.env'
 })
 
 connectDB()  //async function returns a promise, so we can use .then and .catch to handle the connection result

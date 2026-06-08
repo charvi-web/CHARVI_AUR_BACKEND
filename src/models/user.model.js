@@ -1,7 +1,7 @@
 import mongoose,{Schema} from "mongoose";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
-import { asyncHandler } from "../utils/asyncHandler";
+import { asyncHandler } from "../utils/asyncHandler.js";
 
 const userSchema = new Schema(
     {
@@ -35,7 +35,7 @@ const userSchema = new Schema(
         },
         watchHistory:[
             {
-                type:Schema.types.objectId,
+                type:Schema.Types.ObjectId,
                 ref:"Video"
             }
         ],

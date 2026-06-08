@@ -3,7 +3,7 @@ import {ApiError} from '../utils/ApiError.js';
 import {User} from '../models/user.model.js';
 import {uploadOnCloudinary} from '../utils/cloudinary.js';
 import {ApiResponse} from '../utils/ApiResponse.js';
-const generateAccessAndRefreshToken = (userId)=>{
+const generateAccessAndRefreshToken = async (userId)=>{
     try{
         const user = await User.findById(userId)
         const accessToken = user.generateAccessToken()
@@ -98,7 +98,7 @@ const loginUser = asyncHandler(async(req,res)=>{
 
     const {email,username,password}=req.body;
     //only with email if (!email)
-    if (!username || !email)
+    if (! (username ||email))
     {
         throw new ApiError(400,"Username or password is required")
     }
@@ -127,7 +127,7 @@ const loginUser = asyncHandler(async(req,res)=>{
     const loggedInUser = await User.findById(user._id).select("-password -refreshToken")
 
     const options = {
-        httpOny:true,
+        httpOnly:true,
         secure:true
         //only server can modify
     }
@@ -142,7 +142,7 @@ const loginUser = asyncHandler(async(req,res)=>{
 const logoutUser = asyncHandler(async(req,res)=>{
 //cookies se access token aur refresh token dono delete karna hoga
 //like login krte time we were using email username but logout ke time thodi na ye sb lenge
-    User.findById(req.user._id,{
+    User.findByIdAndUpdate(req.user._id,{
         $set:{
             refreshToken:undefined
         }

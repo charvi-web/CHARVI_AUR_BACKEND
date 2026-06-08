@@ -1,6 +1,7 @@
 import mongoose,{Schema} from "mongoose";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
+import { asyncHandler } from "../utils/asyncHandler";
 
 const userSchema = new Schema(
     {
@@ -86,4 +87,9 @@ userSchema.methods.generateRefreshToken = function()
     )
 }
 
+
+
 export const User = mongoose.model("User", userSchema);
+
+//refresh long term, access token short term
+//validate -- acess token but after some time login again adn again access token milega but refresh token se hi milega access token if db ka refresh token match krta h toh access token milega otherwise nahi milega, refresh token se hi access token milega but access token se refresh token nahi milega, access token me user ka data hoga but refresh token me sirf user id hoga, access token short term hoga but refresh token long term hoga, access token client side store krna chahiye but refresh token server side store krna chahiye, access token ko local storage me store krna chahiye but refresh token ko http only cookie me store krna chahiye, access token ko secure cookie me store krna chahiye but refresh token ko secure cookie me store krna chahiye, access token ko same site cookie me store krna chahiye but refresh token ko same site cookie me store krna chahiye

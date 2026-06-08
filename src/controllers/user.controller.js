@@ -3,6 +3,21 @@ import {ApiError} from '../utils/ApiError.js';
 import {User} from '../models/user.model.js';
 import {uploadOnCloudinary} from '../utils/cloudinary.js';
 import {ApiResponse} from '../utils/ApiResponse.js';
+const generateAccessAndRefreshToken = (userId)=>{
+    try{
+        const user = await User.findById(userId)
+        const accessToken = user.generateAccessToken()
+        const refreshToken = user.generateRefreshToken()
+        user.refreshToken = refreshToken
+        //validateBeforeSave false isliye ki agar user ke paas koi required field nhi hai toh bhi refresh token save ho jaye bina error throw kiye
+        await user.save({validateBeforeSave:false})
+        return {accessToken,refreshToken}
+    }
+    catch(error)
+    {
+        throw new ApiError(500,"Error while generating access and refresh token")
+    }
+}
 const registerUser = asyncHandler(async (req, res)=>{
 
     //big problem ko small problems mei break krna 
@@ -72,5 +87,77 @@ const registerUser = asyncHandler(async (req, res)=>{
             return res.status(201).json(new ApiResponse(200,createdUser,"User registered successfully"))
 })
 
+const loginUser = asyncHandler(async(req,res)=>{
+    
+    //get email and password from req body
+    //username or email se login karna chahte h toh dono check karna padega
+    //find the user
+    //if user matches check password
+    //generate access and refresh token
+    //send cookies and response
 
-export {registerUser}
+    const {email,username,password}=req.body;
+    //only with email if (!email)
+    if (!username || !email)
+    {
+        throw new ApiError(400,"Username or password is required")
+    }
+    //pehla jo record milega usko le lega chahe email se mile ya username se mile, dono check karne ke liye $or operator use karna padega
+    const user = await User.findOne({
+        $or:[{username},{email}]
+    })
+
+    if (!user)
+    {
+        throw new ApiError(404,"User not found with given username or email")
+    }
+    //check password 
+    //jo hum password save krte h voh this.password se milega and password se hume jo abhi hum daal rhe h milega
+    //User mongoose wala and humne jo bnaya h voh user h 
+    const isPasswordValid = await user.isPasswordCorrect(password)
+    if (!isPasswordValid)
+    {
+        throw new ApiError(401,"Invalid user credentials")
+    }
+    //generate access and refresh token
+
+    const {accessToken,refreshToken} = await generateAccessAndRefreshToken(user._id)
+
+    //cookies mei bhejna/ select mei -minus krke voh fields daal do jo nhi bhejni
+    const loggedInUser = await User.findById(user._id).select("-password -refreshToken")
+
+    const options = {
+        httpOny:true,
+        secure:true
+        //only server can modify
+    }
+    return res.status(200).cookie("accessToken",accessToken,options).
+    cookie("refreshToken",refreshToken,options).json(
+        new ApiResponse(200,{
+            user:loggedInUser,accessToken,
+            refreshToken
+        },"User logged In successfully")
+    )
+})
+const logoutUser = asyncHandler(async(req,res)=>{
+//cookies se access token aur refresh token dono delete karna hoga
+//like login krte time we were using email username but logout ke time thodi na ye sb lenge
+    User.findById(req.user._id,{
+        $set:{
+            refreshToken:undefined
+        }
+    },{
+        new:true
+    })
+    const options = {
+        httpOnly : true,
+        secure:true
+    }
+    return res.status(200).clearCookie("accessToken",options).clearCookie("refreshToken",options).json(
+        new ApiResponse(200,{},"User logged out successfully")
+    )
+
+
+
+})
+export {registerUser,loginUser,logoutUser}

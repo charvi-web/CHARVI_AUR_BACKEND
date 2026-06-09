@@ -3,6 +3,7 @@ import {ApiError} from '../utils/ApiError.js';
 import {User} from '../models/user.model.js';
 import {uploadOnCloudinary} from '../utils/cloudinary.js';
 import {ApiResponse} from '../utils/ApiResponse.js';
+import jwt from 'jsonwebtoken';
 const generateAccessAndRefreshToken = async (userId)=>{
     try{
         const user = await User.findById(userId)
@@ -52,9 +53,10 @@ const registerUser = asyncHandler(async (req, res)=>{
             {
                 throw new ApiError(409,"User already exists with given username or email")
             }
-    
-            const avatarLocalPath = req.files?.avatar[0]?.path;
-            const coverImageLocalPath = req.files?.coverImage[0]?.path;
+    console.log("BODY =", req.body);
+console.log("FILES =", req.files);
+            const avatarLocalPath = req.files?.avatar?.[0]?.path;
+const coverImageLocalPath = req.files?.coverImage?.[0]?.path;
             if (!avatarLocalPath)
             {
                 throw new ApiError(400,"Avatar image is required")
@@ -62,7 +64,10 @@ const registerUser = asyncHandler(async (req, res)=>{
 
             //jaan bhujkr time lgana padega
             const avatar = await uploadOnCloudinary(avatarLocalPath)
-            const coverImage = await uploadOnCloudinary(coverImageLocalPath)
+
+const coverImage = coverImageLocalPath
+    ? await uploadOnCloudinary(coverImageLocalPath)
+    : null;
             if (!avatar)
             {
                 throw new ApiError(400,"Avatar image is required")
@@ -160,4 +165,49 @@ const logoutUser = asyncHandler(async(req,res)=>{
 
 
 })
-export {registerUser,loginUser,logoutUser}
+
+
+const refreshAccessToken = asyncHandler(async(req,res)=>{
+    //access from cookies ya phir phone se data aa rha h 
+    const incomingRefreshToken = req.cookies.refreshToken || req.body.refreshToken
+
+    if (!incomingRefreshToken)
+    {
+        throw new ApiError(401,"Unauthorized request")
+    }
+    try{
+    const decodedToken = await jwt.verify(incomingRefreshToken,process.env.REFRESH_TOKEN_SECRET)
+
+    const user = User.findById(decodedToken?._id)
+    if (!user )
+    {
+        throw new ApiError(401,"Invalid refresh token")
+    }
+
+    if (user.refreshToken != incomingRefreshToken)
+    {
+        throw new ApiError(401,"Refresh token is expired or used, Login again")
+    }
+
+    const options = {
+        httpOnly:true,
+        secure:true
+    }
+
+    const {accessToken,newRefreshToken} = await generateAccessAndRefreshToken(user._id)
+
+    return res.status(200)
+    .cookie("accessToken",
+    accessToken,options).cookie("refreshToken",newRefreshToken,options).json(
+        new ApiResponse(200,{accessToken,refreshToken : newRefreshToken}
+        ,"Access token refreshed successfully"
+    )
+    )
+}
+catch(error)
+{
+    throw new ApiError(401,error?.message || "Invalid refresh Token")
+}
+})
+
+export {registerUser,loginUser,logoutUser,refreshAccessToken}

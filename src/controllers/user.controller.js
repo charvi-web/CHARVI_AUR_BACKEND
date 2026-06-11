@@ -252,7 +252,7 @@ const updateAccountDetails = asyncHandler(
                 }
             },
             {new:true})  //update hone ke baad jo info h voh return hoti h
-            .select("-password") 
+            .select("-password -refreshToken") 
             return res.status(200).json(new ApiResponse(200,user,"Account details updated successfully"))
     }
 )
@@ -410,7 +410,7 @@ const getWatchHistory = asyncHandler(
                                     as:"owner",
                                     pipeline:[
                                         {
-                                            $projct:{
+                                            $project:{
                                                 fullName :1,
                                                 username:1,
                                                 avatar:1

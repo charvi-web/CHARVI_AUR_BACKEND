@@ -1,13 +1,20 @@
 import mongoose from "mongoose";
 import { Video } from "../models/video.model.js";
 import { Subscription } from "../models/subscription.model.js";
-import { Like } from "../models/like.model.js";
-import ApiResponse from "../utils/ApiResponse.js";
-import asyncHandler from "../utils/asyncHandler.js";
+import { ApiResponse } from "../utils/ApiResponse.js";
+import { ApiError } from "../utils/ApiError.js";
+import { asyncHandler } from "../utils/asyncHandler.js";
 
+
+// Get Channel Stats
 const getChannelStats = asyncHandler(async (req, res) => {
-    // TODO: Get the channel stats like total video views, total subscribers, total videos, total likes etc.
+
     const userId = req.user?._id;
+
+    if (!userId) {
+        throw new ApiError(401, "Unauthorized request");
+    }
+
 
     const totalSubscribers = await Subscription.aggregate([
         {
@@ -25,7 +32,8 @@ const getChannelStats = asyncHandler(async (req, res) => {
         }
     ]);
 
-    const video = await Video.aggregate([
+
+    const videoStats = await Video.aggregate([
         {
             $match: {
                 owner: new mongoose.Types.ObjectId(userId)
@@ -44,8 +52,7 @@ const getChannelStats = asyncHandler(async (req, res) => {
                 totalLikes: {
                     $size: "$likes"
                 },
-                totalViews: "$views",
-                totalVideos: 1
+                totalViews: "$views"
             }
         },
         {
@@ -64,12 +71,14 @@ const getChannelStats = asyncHandler(async (req, res) => {
         }
     ]);
 
+
     const channelStats = {
         totalSubscribers: totalSubscribers[0]?.subscribersCount || 0,
-        totalLikes: video[0]?.totalLikes || 0,
-        totalViews: video[0]?.totalViews || 0,
-        totalVideos: video[0]?.totalVideos || 0
+        totalLikes: videoStats[0]?.totalLikes || 0,
+        totalViews: videoStats[0]?.totalViews || 0,
+        totalVideos: videoStats[0]?.totalVideos || 0
     };
+
 
     return res
         .status(200)
@@ -77,14 +86,24 @@ const getChannelStats = asyncHandler(async (req, res) => {
             new ApiResponse(
                 200,
                 channelStats,
-                "channel stats fetched successfully"
+                "Channel stats fetched successfully"
             )
         );
+
 });
 
+
+
+
+// Get Channel Videos
 const getChannelVideos = asyncHandler(async (req, res) => {
-    // TODO: Get all the videos uploaded by the channel
+
     const userId = req.user?._id;
+
+    if (!userId) {
+        throw new ApiError(401, "Unauthorized request");
+    }
+
 
     const videos = await Video.aggregate([
         {
@@ -92,6 +111,7 @@ const getChannelVideos = asyncHandler(async (req, res) => {
                 owner: new mongoose.Types.ObjectId(userId)
             }
         },
+
         {
             $lookup: {
                 from: "likes",
@@ -100,48 +120,62 @@ const getChannelVideos = asyncHandler(async (req, res) => {
                 as: "likes"
             }
         },
+
         {
             $addFields: {
-                createdAt: {
-                    $dateToParts: { date: "$createdAt" }
-                },
                 likesCount: {
                     $size: "$likes"
                 }
             }
         },
+
         {
             $sort: {
                 createdAt: -1
             }
         },
+
         {
             $project: {
                 _id: 1,
-                "videoFile.url": 1,
-                "thumbnail.url": 1,
-                title: 1,
-                description: 1,
-                createdAt: {
-                    year: 1,
-                    month: 1,
-                    day: 1
+
+                videoFile: {
+                    url: 1
                 },
+
+                thumbnail: {
+                    url: 1
+                },
+
+                title: 1,
+
+                description: 1,
+
+                createdAt: 1,
+
                 isPublished: 1,
+
                 likesCount: 1
             }
         }
     ]);
 
+
+
     return res
-    .status(200)
-    .json(
-        new ApiResponse(
-            200,
-            videos,
-            "channel stats fetched successfully"
-        )
-    );
+        .status(200)
+        .json(
+            new ApiResponse(
+                200,
+                videos,
+                "Channel videos fetched successfully"
+            )
+        );
+
 });
 
-export { getChannelStats, getChannelVideos };
+
+export {
+    getChannelStats,
+    getChannelVideos
+};

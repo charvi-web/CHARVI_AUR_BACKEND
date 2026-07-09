@@ -1,7 +1,6 @@
 import mongoose,{Schema} from "mongoose";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
-import { asyncHandler } from "../utils/asyncHandler.js";
 
 const userSchema = new Schema(
     {
@@ -11,7 +10,10 @@ const userSchema = new Schema(
             unique:true,
             lowercase:true,
             trim:true,
-            index :true  //searching field kisi cheez pr enable krni h toh index true krdo that makes it optimised
+            index :true, //searching field kisi cheez pr enable krni h toh index true krdo that makes it optimised
+            minlength: 3,
+    maxlength: 20,
+    index: true,
         },
         email : {
             type:String,
@@ -19,6 +21,7 @@ const userSchema = new Schema(
             unique:true,
             lowercase:true,
             trim:true,
+            index:true,
         },
         fullName : {
             type:String,
@@ -26,13 +29,31 @@ const userSchema = new Schema(
             trim:true,
             index :true  //searching field kisi cheez pr enable krni h toh index true krdo that makes it optimised
         },
-        avatar : {
-            type:String, //cloudinary se url aayega
-            required:true,
-        },
-        coverImage:{
-            type:String
-        },
+        avatar: {
+    url: {
+        type: String,
+        required: true,
+        trim: true,
+    },
+    public_id: {
+        type: String,
+        required: true,
+        trim: true,
+    },
+},
+
+coverImage: {
+    url: {
+        type: String,
+        default: null,
+        trim: true,
+    },
+    public_id: {
+        type: String,
+        default: null,
+        trim: true,
+    },
+},
         watchHistory:[
             {
                 type:Schema.Types.ObjectId,
@@ -50,10 +71,17 @@ const userSchema = new Schema(
 },{timestamps:true})
 
 //in callback this ka reference nhi hota h toh use normal function
-userSchema.pre("save", async function () {
-    if (!this.isModified("password")) return;
+userSchema.pre("save", async function (next) {
+    if (!this.isModified("password")) {
+        return next();
+    }
 
-    this.password = await bcrypt.hash(this.password, 10);
+    this.password = await bcrypt.hash(
+        this.password,
+        Number(process.env.BCRYPT_SALT_ROUNDS) || 10
+    );
+
+    return next();
 });
 
 userSchema.methods.isPasswordCorrect=async function(password)

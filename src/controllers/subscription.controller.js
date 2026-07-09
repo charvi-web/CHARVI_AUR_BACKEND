@@ -1,16 +1,19 @@
 import mongoose, { isValidObjectId } from "mongoose";
-import asyncHandler from "../utils/asyncHandler.js";
-import ApiError from "../utils/apiError.js";
-import ApiResponse from "../utils/ApiResponse.js";
+import { asyncHandler } from "../utils/asyncHandler.js";
+import { ApiError } from "../utils/ApiError.js";
+import { ApiResponse } from "../utils/ApiResponse.js";
 import { Subscription } from "../models/subscription.model.js";
 
 const toggleSubscription = asyncHandler(async (req, res) => {
     const { channelId } = req.params;
-    // TODO: toggle subscription
 
-    if (!isValidObjectId(channelId)) {
-        throw new ApiError(400, "Invalid channelId");
-    }
+if (!isValidObjectId(channelId)) {
+    throw new ApiError(400, "Invalid channelId");
+}
+
+if (channelId === req.user?._id.toString()) {
+    throw new ApiError(400, "You cannot subscribe to yourself");
+}
 
     const isSubscribed = await Subscription.findOne({
         subscriber: req.user?._id,
@@ -26,7 +29,7 @@ const toggleSubscription = asyncHandler(async (req, res) => {
                 new ApiResponse(
                     200,
                     { subscribed: false },
-                    "unsunscribed successfully"
+                    "Unsubscribed successfully"
                 )
             );
     }
@@ -42,7 +45,7 @@ const toggleSubscription = asyncHandler(async (req, res) => {
             new ApiResponse(
                 200,
                 { subscribed: true },
-                "subscribed successfully"
+                "Subscribed successfully"
             )
         );
 });
@@ -50,6 +53,7 @@ const toggleSubscription = asyncHandler(async (req, res) => {
 // controller to return subscriber list of a channel
 const getUserChannelSubscribers = asyncHandler(async (req, res) => {
     let { channelId } = req.params;
+    
 
     if (!isValidObjectId(channelId)) {
         throw new ApiError(400, "Invalid channelId");
@@ -105,16 +109,9 @@ const getUserChannelSubscribers = asyncHandler(async (req, res) => {
         },
         {
             $project: {
-                _id: 0,
-                subscriber: {
-                    _id: 1,
-                    username: 1,
-                    fullName: 1,
-                    "avatar.url": 1,
-                    subscribedToSubscriber: 1,
-                    subscribersCount: 1,
-                },
-            },
+    _id: 0,
+    subscriber: 1,
+},
         },
     ]);
 
@@ -132,7 +129,9 @@ const getUserChannelSubscribers = asyncHandler(async (req, res) => {
 // controller to return channel list to which user has subscribed
 const getSubscribedChannels = asyncHandler(async (req, res) => {
     const { subscriberId } = req.params;
-
+    if (!isValidObjectId(subscriberId)) {
+    throw new ApiError(400, "Invalid subscriberId");
+}
     const subscribedChannels = await Subscription.aggregate([
         {
             $match: {
@@ -140,55 +139,65 @@ const getSubscribedChannels = asyncHandler(async (req, res) => {
             },
         },
         {
-            $lookup: {
-                from: "users",
-                localField: "channel",
-                foreignField: "_id",
-                as: "subscribedChannel",
-                pipeline: [
-                    {
-                        $lookup: {
-                            from: "videos",
-                            localField: "_id",
-                            foreignField: "owner",
-                            as: "videos",
-                        },
-                    },
-                    {
-                        $addFields: {
-                            latestVideo: {
-                                $last: "$videos",
-                            },
-                        },
-                    },
-                ],
-            },
+    $lookup: {
+        from: "users",
+        localField: "channel",
+        foreignField: "_id",
+        as: "subscribedChannel",
+        pipeline: [
+            {
+    $lookup: {
+        from: "videos",
+        localField: "_id",
+        foreignField: "owner",
+        as: "videos",
+    },
+},
+{
+    $addFields: {
+        latestVideo: {
+            $last: "$videos",
         },
-        {
-            $unwind: "$subscribedChannel",
-        },
-        {
-            $project: {
-                _id: 0,
-                subscribedChannel: {
-                    _id: 1,
+    },
+},
+{
+    $project: {
+        username: 1,
+        fullName: 1,
+        avatar: 1,
+        latestVideo: 1,
+    },
+},
+            {
+                $project: {
                     username: 1,
                     fullName: 1,
-                    "avatar.url": 1,
+                    avatar: 1,
                     latestVideo: {
                         _id: 1,
-                        "videoFile.url": 1,
-                        "thumbnail.url": 1,
+                        videoFile: 1,
+                        thumbnail: 1,
                         owner: 1,
                         title: 1,
                         description: 1,
                         duration: 1,
                         createdAt: 1,
-                        views: 1
+                        views: 1,
                     },
                 },
             },
-        },
+        ],
+    },
+},
+{
+    $unwind: "$subscribedChannel",
+},
+{
+    $project: {
+        _id: 0,
+        subscribedChannel: 1,
+    },
+},
     ]);
 
     return res

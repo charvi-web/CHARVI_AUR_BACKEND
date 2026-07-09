@@ -7,12 +7,10 @@ import {
     getVideoById,
     updateVideo,
     publishAVideo,
-    togglePublishStatus
+    togglePublishStatus,
 } from "../controllers/video.controller.js";
 
 const router = Router();
-
-// router.use(verifyJWT); // Apply verifyJWT middleware to all routes in this file
 
 router
     .route("/")
@@ -22,22 +20,28 @@ router
         upload.fields([
             {
                 name: "videoFile",
-                maxCount: 1
+                maxCount: 1,
             },
             {
                 name: "thumbnail",
-                maxCount: 1
-            }
+                maxCount: 1,
+            },
         ]),
         publishAVideo
     );
 
 router
     .route("/v/:videoId")
-    .get(verifyJWT, getVideoById)
-    .delete(verifyJWT, deleteVideo)
-    .patch(verifyJWT, upload.single("thumbnail"), updateVideo);
+    .get(verifyJWT, getVideoById) // <-- verifyJWT hata sakte ho
+    .patch(
+        verifyJWT,
+        upload.single("thumbnail"),
+        updateVideo
+    )
+    .delete(verifyJWT, deleteVideo);
 
-router.route("/toggle/publish/:videoId").patch(verifyJWT, togglePublishStatus);
+router
+    .route("/toggle/publish/:videoId")
+    .patch(verifyJWT, togglePublishStatus);
 
 export default router;

@@ -71,17 +71,15 @@ coverImage: {
 },{timestamps:true})
 
 //in callback this ka reference nhi hota h toh use normal function
-userSchema.pre("save", async function (next) {
+userSchema.pre("save", async function () {
     if (!this.isModified("password")) {
-        return next();
+        return;
     }
 
     this.password = await bcrypt.hash(
         this.password,
         Number(process.env.BCRYPT_SALT_ROUNDS) || 10
     );
-
-    return next();
 });
 
 userSchema.methods.isPasswordCorrect=async function(password)

@@ -23,7 +23,7 @@ const uploadOnCloudinary = async (localFilePath) => {
     } catch (error) {
         console.error("Cloudinary Upload Error:", error.message);
 
-        if (fs.existsSync(localFilePath)) {
+        if (localFilePath && fs.existsSync(localFilePath)) {
             fs.unlinkSync(localFilePath);
         }
 
@@ -31,4 +31,22 @@ const uploadOnCloudinary = async (localFilePath) => {
     }
 };
 
-export { uploadOnCloudinary };
+const deleteOnCloudinary = async (publicId, resourceType = "image") => {
+    try {
+        if (!publicId) return null;
+
+        const response = await cloudinary.uploader.destroy(publicId, {
+            resource_type: resourceType,
+        });
+
+        return response;
+    } catch (error) {
+        console.error("Cloudinary Delete Error:", error.message);
+        return null;
+    }
+};
+
+export {
+    uploadOnCloudinary,
+    deleteOnCloudinary,
+};

@@ -4,20 +4,17 @@ const likeSchema = new Schema(
     {
         video: {
             type: Schema.Types.ObjectId,
-            ref: "Video",
-            default: null,
+            ref: "Video"
         },
 
         comment: {
             type: Schema.Types.ObjectId,
-            ref: "Comment",
-            default: null,
+            ref: "Comment"
         },
 
         tweet: {
             type: Schema.Types.ObjectId,
-            ref: "Tweet",
-            default: null,
+            ref: "Tweet"
         },
 
         likedBy: {
@@ -32,16 +29,14 @@ const likeSchema = new Schema(
 );
 
 // A like must belong to exactly one entity
-likeSchema.pre("validate", function (next) {
+likeSchema.pre("validate", function () {
     const targets = [this.video, this.comment, this.tweet].filter(Boolean);
 
     if (targets.length !== 1) {
-        return next(
-            new Error("Like must belong to exactly one target (video, comment, or tweet).")
+        throw new Error(
+            "Like must belong to exactly one target (video, comment, or tweet)."
         );
     }
-
-    next();
 });
 
 // Prevent duplicate likes

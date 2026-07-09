@@ -9,14 +9,17 @@ import { verifyJWT } from "../middlewares/auth.middleware.js";
 
 const router = Router();
 
+// Protect all comment routes
 router.use(verifyJWT);
 
-router.route("/:videoId")
+router
+    .route("/:videoId")
     .get(getVideoComments)
     .post(addComment);
 
-router.route("/c/:commentId")
-    .delete(deleteComment)
-    .patch(updateComment);
+router
+    .route("/c/:commentId")
+    .patch(updateComment)
+    .delete(deleteComment);
 
 export default router;
